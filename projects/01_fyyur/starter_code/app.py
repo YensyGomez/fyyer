@@ -5,7 +5,7 @@
 import json
 import dateutil.parser
 import babel
-from flask import Flask, render_template, request, Response, flash, redirect, url_for
+from flask import Flask, render_template, request, Response, flash, redirect, url_for, abort
 from flask_moment import Moment
 from flask_sqlalchemy import SQLAlchemy
 import logging
@@ -14,6 +14,7 @@ from flask_wtf import Form
 from forms import *
 from flask_migrate import Migrate
 from datetime import datetime
+import sys
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
@@ -40,8 +41,12 @@ class Venue(db.Model):
     state = db.Column(db.String(120))
     address = db.Column(db.String(120))
     phone = db.Column(db.String(120))
-    image_link = db.Column(db.String(500))
+    website = db.Column(db.String(120))
     facebook_link = db.Column(db.String(120))
+    seeking_talent = db.Column(db.Boolean)
+    seeking_description = db.Column(db.String(500))
+    image_link = db.Column(db.String(500))
+    shows = db.relationship('Show', backref="Venue", lazy=True)
 
     def __repr__(self):
         return f"<Venue {self.id}, {self.name}>"
@@ -53,13 +58,19 @@ class Artist(db.Model):
     __tablename__ = 'Artist'
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String,)
+    name = db.Column(db.String(120))
     city = db.Column(db.String(120))
     state = db.Column(db.String(120))
     phone = db.Column(db.String(120))
-    genres = db.Column(db.String(120))
-    image_link = db.Column(db.String(500))
+    genres = db.Column(db.ARRAY(db.String))
     facebook_link = db.Column(db.String(120))
+    seeking_talent = db.Column(db.Boolean)
+    image_link = db.Column(db.String(500))
+    past_shows = db.Column(db.String(120))
+    upcoming_shows = db.Column(db.Integer)
+    past_shows_count = db.Column(db.Integer)
+    upcoming_shows_count = db.Column(db.Integer)
+    shows = db.relationship('Show', backref="Artist", lazy=True)
 
     def __repr__(self):
         return f"<Artist {self.id}, {self.name}>"
@@ -240,15 +251,49 @@ def create_venue_form():
   return render_template('forms/new_venue.html', form=form)
 
 @app.route('/venues/create', methods=['POST'])
-def create_venue_submission():
-  # TODO: insert form data as a new Venue record in the db, instead
-  # TODO: modify data to be the data object returned from db insertion
-
   # on successful db insert, flash success
-  flash('Venue ' + request.form['name'] + ' was successfully listed!')
+  #flash('Venue ' + request.form['name'] + ' was successfully listed!') (READY)
   # TODO: on unsuccessful db insert, flash an error instead.
-  # e.g., flash('An error occurred. Venue ' + data.name + ' could not be listed.')
-  # see: http://flask.pocoo.org/docs/1.0/patterns/flashing/
+  # e.g., flash('An error occurred. Venue ' + data.name + ' could not be listed.')(READY)
+  # see: http://flask.pocoo.org/docs/1.0/patterns/flashing/ (READY)
+def create_venue_submission():
+  error = False
+  try:
+    name = request.form['name']
+    genres = request.form.getlist('genres')
+    city = request.form['city']
+    state = request.form['state']
+    address = request.form['address']
+    phone = request.form['phone']
+    website = request.form['website']
+    facebook_link = request.form['facebook_link']
+    seeking_talent = True if 'seeking_talent' in request.form else False
+    seeking_description = request.form['seeking_talent']
+    image_link = request.form['image_link']
+
+    new_venue = Venue(name=name, 
+    genres=genres, 
+    city=city, 
+    state=state, 
+    address=address, 
+    phone=phone, 
+    website=website,
+    facebook_link = facebook_link,
+    seeking_talent = seeking_talent,
+    seeking_description = seeking_description,
+    image_link = image_link)
+    db.session.add(new_venue)
+    db.session.commit()
+    flash('Venue ' + request.form['name'] + ' was successfully listed!')
+  except: 
+    error = True
+    db.session.rollback()
+    print(sys.exc_info())
+    abort(400)
+    flash('An error occurred. Venue ' + request.form['name']+ ' could not be listed.')
+  finally: 
+    db.session.close()
+
   return render_template('pages/home.html')
 
 @app.route('/venues/<venue_id>', methods=['DELETE'])
