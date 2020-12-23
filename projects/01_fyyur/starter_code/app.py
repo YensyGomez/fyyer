@@ -293,7 +293,6 @@ def create_venue_submission():
     flash('An error occurred. Venue ' + request.form['name']+ ' could not be listed.')
   finally: 
     db.session.close()
-
   return render_template('pages/home.html')
 
 @app.route('/venues/<venue_id>', methods=['DELETE'])
