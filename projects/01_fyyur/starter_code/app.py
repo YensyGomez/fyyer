@@ -8,6 +8,7 @@ import babel
 from flask import Flask, render_template, request, Response, flash, redirect, url_for, abort
 from flask_moment import Moment
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import func
 import logging
 from logging import Formatter, FileHandler
 from flask_wtf import Form
@@ -15,6 +16,7 @@ from forms import *
 from flask_migrate import Migrate
 from datetime import datetime
 import sys
+
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
@@ -100,7 +102,7 @@ def format_datetime(value, format='medium'):
       format="EEEE MMMM, d, y 'at' h:mma"
   elif format == 'medium':
       format="EE MM, dd, y h:mma"
-  return babel.dates.format_datetime(date, format)
+  return babel.dates.format_datetime(date, format,locale='en')
 
 app.jinja_env.filters['datetime'] = format_datetime
 
@@ -141,6 +143,23 @@ def venues():
       "num_upcoming_shows": 0,
     }]
   }]
+  # areas_n = Venue.query.with_entities(func.count(Venue.id), Venue.city, Venue.state).group_by(Venue.city, Venue.state).all()
+
+  # data = []
+  # for area in areas_n:
+  #   area_venues = Venue.query.filter_by(state=area.state).filter_by(city=area.city).all()
+  #   venue_data = []
+  #   for venue in area_venues:
+  #     venue_data.append({
+  #       "id": venue.id,
+  #       "name": venue.name, 
+  #       "num_upcoming_shows": 0
+  #     })
+  #   data.append({
+  #     "city": area.city,
+  #     "state": area.state, 
+  #     "venues": venue_data
+  #   })
   return render_template('pages/venues.html', areas=data);
 
 @app.route('/venues/search', methods=['POST'])
@@ -289,10 +308,13 @@ def create_venue_submission():
     error = True
     db.session.rollback()
     print(sys.exc_info())
-    abort(400)
-    flash('An error occurred. Venue ' + request.form['name']+ ' could not be listed.')
   finally: 
     db.session.close()
+  if error: 
+    flash('An error occurred. Venue ' + request.form['name']+ ' could not be listed.')
+  if not error: 
+    flash('Venue ' + request.form['name'] + ' was successfully listed!')
+
   return render_template('pages/home.html')
 
 @app.route('/venues/<venue_id>', methods=['DELETE'])
