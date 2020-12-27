@@ -74,6 +74,19 @@
 		{% endfor %}
 	</div>
 </section>
+<section>
+	<div>
+		<a href="/venues/{{ venue.id }}/edit">
+			<button class="btn btn-primary btn-lg btn-block">Edit</button>
+		</a>
+	  </div>
+</section>
+<section>
+	<div>
+		<input type="submit" value="Delete Venue" class="btn btn-primary btn-lg btn-block" formaction="{{ url_for('delete_venue', venue_id=venue.id) }}">
+	</div>
+</section>
+
 
 {% endblock %}
 
