@@ -49,7 +49,7 @@ class Venue(db.Model):
     seeking_talent = db.Column(db.Boolean)
     seeking_description = db.Column(db.String(500))
     image_link = db.Column(db.String(500))
-    shows = db.relationship('Show', backref="Venue", lazy=True)
+    shows = db.relationship('Show', backref="Venue", lazy=True, cascade='all, delete')
 
     def __repr__(self):
         return f"<Venue {self.id}, {self.name}>"
@@ -71,7 +71,7 @@ class Artist(db.Model):
     facebook_link = db.Column(db.String(120))
     seeking_venue = db.Column(db.Boolean)
     seeking_description = db.Column(db.String(500))
-    shows = db.relationship('Show', backref="Artist", lazy=True)
+    shows = db.relationship('Show', backref="Artist", lazy=True, cascade='all, delete')
 
     def __repr__(self):
         return f"<Artist {self.id}, {self.name}>"
@@ -234,7 +234,7 @@ def create_venue_submission():
     website = request.form['website']
     facebook_link = request.form['facebook_link']
     seeking_talent = True if 'seeking_talent' in request.form else False
-    seeking_description = request.form['seeking_talent']
+    seeking_description = request.form['seeking_description']
     image_link = request.form['image_link']
 
     new_venue = Venue(name=name, 
@@ -263,29 +263,32 @@ def create_venue_submission():
     flash('An error occurred. Venue ' + request.form['name']+ ' could not be listed.')
   if not error: 
     flash('Venue ' + request.form['name'] + ' was successfully listed!')
-
   return render_template('pages/home.html')
 
-@app.route('/venues/<venue_id>', methods=['DELETE'])
+@app.route('/venues/<venue_id>', methods=['POST'])
 def delete_venue(venue_id):
   # TODO: Complete this endpoint for taking a venue_id, and using
   # SQLAlchemy ORM to delete a record. Handle cases where the session commit could fail.
   error = False
   try:
-    Venue.query.filter_by(id=venue_id).delete()
+    venue = Venue.query.first_or_404(venue_id)
+    db.session.delete(venue)
     db.session.commit()
+    flash('The venue has been removed together with all of its shows.')
+    return render_template('pages/home.html')
   except Exception as e:
+    print("Soy el error")
     print(e)
+    print("______________ ")
     error = True
     db.session.rollback()
     print(sys.exc_info())
+    flash(f'Venue {venue_id} was successfully deleted.')
   finally:
     db.session.close()
-  if error: 
-    flash(f'An error occurred. Venue {venue_id} could not be deleted.')
-  if not error: 
-    flash(f'Venue {venue_id} was successfully deleted.')
-  return render_template('pages/home.html')
+  return redirect(url_for('venues'))
+
+    
 
 
   # BONUS CHALLENGE: Implement a button to delete a Venue on a Venue Page, have it so that
@@ -329,8 +332,8 @@ def show_artist(artist_id):
   for show in past_shows_query:
     past_shows.append({
       "venue_id": show.venue_id,
-      "venue_name": show.venue.name,
-      "artist_image_link": show.venue.image_link,
+      "venue_name": show.Venue.name,
+      "artist_image_link": show.Venue.image_link,
       "Start_Time": show.Start_Time.strftime('%Y-%m-%d %H:%M:%S')
     })
 
@@ -340,8 +343,8 @@ def show_artist(artist_id):
   for show in upcoming_shows_query:
     upcoming_shows.append({
       "venue_id": show.venue_id,
-      "venue_name": show.venue.name,
-      "artist_image_link": show.venue.image_link,
+      "venue_name": show.Venue.name,
+      "artist_image_link": show.Venue.image_link,
       "Start_Time": show.Start_Time.strftime('%Y-%m-%d %H:%M:%S')
     })
 
@@ -419,7 +422,8 @@ def edit_artist_submission(artist_id):
       artist.seeking_description = seeking_description
 
       db.session.commit()
-  except Exception:
+  except Exception as e:
+      print(e)
       error = True
       db.session.rollback()
       print(sys.exc_info())
@@ -433,9 +437,30 @@ def edit_artist_submission(artist_id):
   if not error:
       flash('Artist '+ name+ ' was successfully updated!'
       )
-
-
   return redirect(url_for('show_artist', artist_id=artist_id))
+  
+@app.route('/artists/<artist_id>', methods=['POST'])
+def delete_artist(artist_id):
+  # TODO: Complete this endpoint for taking a venue_id, and using
+  # SQLAlchemy ORM to delete a record. Handle cases where the session commit could fail.
+  error = False
+  try:
+    artist = Artist.query.first_or_404(artist_id)
+    db.session.delete(artist)
+    db.session.commit()
+    flash('The artist has been removed together with all of its shows.')
+    return render_template('pages/home.html')
+  except Exception as e:
+    print("Soy el error")
+    print(e)
+    print("______________ ")
+    error = True
+    db.session.rollback()
+    print(sys.exc_info())
+    flash(f'Artist {artist_id} was successfully deleted.')
+  finally:
+    db.session.close()
+  return redirect(url_for('artists'))
 
 @app.route('/venues/<int:venue_id>/edit', methods=['GET'])
 def edit_venue(venue_id):
@@ -472,7 +497,7 @@ def edit_venue_submission(venue_id):
     website = request.form['website']
     facebook_link = request.form['facebook_link']
     seeking_talent = True if 'seeking_talent' in request.form else False
-    seeking_description = request.form['seeking_talent']
+    seeking_description = request.form['seeking_description']
     image_link = request.form['image_link']
      
     venue = Venue.query.get(venue_id)
@@ -486,7 +511,7 @@ def edit_venue_submission(venue_id):
     venue.image_link = image_link
     venue.facebook_link =facebook_link
     venue.website = website
-    venue.seeking_talent =  seeking_talent 
+    venue.seeking_talent = seeking_talent 
     venue.seeking_description = seeking_description
 
     db.session.commit()
@@ -529,15 +554,15 @@ def create_artist_submission():
     seeking_description = request.form['seeking_description']
 
     new_artist = Artist(name=name, 
-    city=city, 
-    state=state, 
-    phone=phone, 
-    genres=genres, 
-    facebook_link=facebook_link, 
-    image_link=image_link, 
-    website=website, 
-    seeking_venue=seeking_venue, 
-    seeking_description=seeking_description)
+    city = city, 
+    state = state, 
+    phone = phone, 
+    genres = genres, 
+    facebook_link = facebook_link, 
+    image_link = image_link, 
+    website = website, 
+    seeking_venue = seeking_venue, 
+    seeking_description = seeking_description)
 
     db.session.add(new_artist)
     db.session.commit()

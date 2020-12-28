@@ -124,7 +124,7 @@ class VenueForm(Form):
         'seeking_talent'
     )
     seeking_description = TextAreaField(
-        'seeking_description', validators=[Length(min=5, max=500)]
+        'seeking_description', validators=[Length(min=10, max=500)]
     )
     image_link = StringField(
         'image_link', validators=[URL()]
@@ -234,7 +234,7 @@ class ArtistForm(Form):
         'seeking_venue'
     )
     seeking_description = TextAreaField(
-        'seeking_description', validators=[Length(min=5, max=500)]
+        'seeking_description', validators=[Length(min=10, max=500)]
 
     )
 # TODO IMPLEMENT NEW ARTIST FORM AND NEW SHOW FORM

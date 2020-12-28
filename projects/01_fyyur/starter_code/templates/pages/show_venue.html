@@ -82,9 +82,12 @@
 	  </div>
 </section>
 <section>
-	<div>
-		<input type="submit" value="Delete Venue" class="btn btn-primary btn-lg btn-block" formaction="{{ url_for('delete_venue', venue_id=venue.id) }}">
-	</div>
+	<form method="POST">
+		<input type="submit"
+			   value="Delete Venue"
+			   class="btn btn-primary btn-lg btn-block"
+			   formaction="{{ url_for('delete_venue', venue_id=venue.id) }}">
+	</form>
 </section>
 
 
