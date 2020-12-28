@@ -1,5 +1,5 @@
 from datetime import datetime
-from flask_wtf import Form
+from flask_wtf import FlaskForm
 from wtforms import StringField, SelectField, SelectMultipleField, DateTimeField, TextAreaField, BooleanField
 from wtforms.validators import DataRequired, AnyOf, URL, Length
 
@@ -7,7 +7,7 @@ def validate_phone(form, field):
     if not re.search(r"^[0-9]*$", field.data):
         raise ValidationError("Phone number should only contain digits.")
 
-class ShowForm(Form):
+class ShowForm(FlaskForm):
     artist_id = StringField(
         'artist_id'
     )
@@ -20,7 +20,7 @@ class ShowForm(Form):
         default= datetime.today()
     )
 
-class VenueForm(Form):
+class VenueForm(FlaskForm):
     name = StringField(
         'name', validators=[DataRequired()]
     )
@@ -130,7 +130,7 @@ class VenueForm(Form):
         'image_link', validators=[URL()]
     )
 
-class ArtistForm(Form):
+class ArtistForm(FlaskForm):
     name = StringField(
         'name', validators=[DataRequired()]
     )
@@ -238,7 +238,7 @@ class ArtistForm(Form):
 
     )
 # TODO IMPLEMENT NEW ARTIST FORM AND NEW SHOW FORM
-class ShowForm(Form):
+class ShowForm(FlaskForm):
     artist_id = StringField(
         'artist_id'
     )

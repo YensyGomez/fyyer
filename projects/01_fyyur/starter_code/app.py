@@ -5,7 +5,15 @@
 import json
 import dateutil.parser
 import babel
-from flask import Flask, render_template, request, Response, flash, redirect, url_for
+from flask import (
+    Flask, 
+    render_template, 
+    request, 
+    Response, 
+    flash, 
+    redirect, 
+    url_for
+)
 from flask_moment import Moment
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func
@@ -16,80 +24,23 @@ from forms import *
 from flask_migrate import Migrate
 from datetime import datetime
 import sys
+from flask import Flask
+from models import app, db, Venue, Artist, Show 
 
 #----------------------------------------------------------------------------#
 # App Config.
 #----------------------------------------------------------------------------#
 
-app = Flask(__name__)
-moment = Moment(app)
 app.config.from_object('config')
-db = SQLAlchemy(app)
+moment = Moment(app)
 db.init_app(app)
-migrate = Migrate(app, db)
 
 # TODO: connect to a local postgresql database (READY IN config.py)
 
 #----------------------------------------------------------------------------#
 # Models.
 #----------------------------------------------------------------------------#
-
-class Venue(db.Model):
-    __tablename__ = 'Venue'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String)
-    genres = db.Column(db.ARRAY(db.String))
-    city = db.Column(db.String(120))
-    state = db.Column(db.String(120))
-    address = db.Column(db.String(120))
-    phone = db.Column(db.String(120))
-    website = db.Column(db.String(120))
-    facebook_link = db.Column(db.String(120))
-    seeking_talent = db.Column(db.Boolean)
-    seeking_description = db.Column(db.String(500))
-    image_link = db.Column(db.String(500))
-    shows = db.relationship('Show', backref="Venue", lazy=True, cascade='all, delete')
-
-    def __repr__(self):
-        return f"<Venue {self.id}, {self.name}>"
-
-
-    # TODO: implement any missing fields, as a database migration using Flask-Migrate
-
-class Artist(db.Model):
-    __tablename__ = 'Artist'
-
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String)
-    genres = db.Column(db.ARRAY(db.String))
-    city = db.Column(db.String(120))
-    state = db.Column(db.String(120))
-    phone = db.Column(db.String(120))
-    website = db.Column(db.String(120))
-    image_link = db.Column(db.String(500))
-    facebook_link = db.Column(db.String(120))
-    seeking_venue = db.Column(db.Boolean)
-    seeking_description = db.Column(db.String(500))
-    shows = db.relationship('Show', backref="Artist", lazy=True, cascade='all, delete')
-
-    def __repr__(self):
-        return f"<Artist {self.id}, {self.name}>"
-
-
-    # TODO: implement any missing fields, as a database migration using Flask-Migrate
-
-# TODO Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
-class Show(db.Model):
-    __tablename__ = 'Show'
-    id = db.Column(db.Integer, primary_key=True)
-    artist_id = db.Column(db.Integer, db.ForeignKey('Artist.id'), nullable=False)
-    venue_id = db.Column(db.Integer, db.ForeignKey('Venue.id'), nullable=False)
-    Start_Time = db.Column(db.DateTime)
-
-    def __repr__(self):
-      return f'<Show {self.artist_id}, {self.venue_id} >'
-
+   
 
 #----------------------------------------------------------------------------#
 # Filters.
@@ -119,23 +70,20 @@ def index():
 
 @app.route('/venues')
 def venues():
-  new_areas = Venue.query.with_entities(func.count(Venue.id), Venue.city, Venue.state).group_by(Venue.city, Venue.state).all()
-  data = []
-  for area in new_areas:
-    area_venues = Venue.query.filter_by(state=area.state).filter_by(city=area.city).all()
-    venue_data = []
-    for venue in area_venues:
-      venue_data.append({
-        "id": venue.id,
-        "name": venue.name, 
-        "num_upcoming_shows": 0
+  locals = []
+  venues = Venue.query.all()
+  places = Venue.query.distinct(Venue.city, Venue.state).all()
+  for place in places:
+      locals.append({
+          'city': place.city,
+          'state': place.state,
+          'venues': [{
+              'id': venue.id,
+              'name': Venue.name,
+          } for venue in venues if
+              venue.city == place.city and venue.state == place.state]
       })
-    data.append({
-      "city": area.city,
-      "state": area.state, 
-      "venues": venue_data
-    })
-  return render_template('pages/venues.html', areas=data);
+  return render_template('pages/venues.html', areas=locals)
 
 @app.route('/venues/search', methods=['POST'])
 def search_venues():
@@ -224,34 +172,12 @@ def create_venue_form():
   # see: http://flask.pocoo.org/docs/1.0/patterns/flashing/ (READY)
 def create_venue_submission():
   error = False
+  form = VenueForm(request.form)
   try:
-    name = request.form['name']
-    genres = request.form.getlist('genres')
-    city = request.form['city']
-    state = request.form['state']
-    address = request.form['address']
-    phone = request.form['phone']
-    website = request.form['website']
-    facebook_link = request.form['facebook_link']
-    seeking_talent = True if 'seeking_talent' in request.form else False
-    seeking_description = request.form['seeking_description']
-    image_link = request.form['image_link']
-
-    new_venue = Venue(name=name, 
-    genres=genres, 
-    city=city, 
-    state=state, 
-    address=address, 
-    phone=phone, 
-    website=website,
-    facebook_link = facebook_link,
-    seeking_talent = seeking_talent,
-    seeking_description = seeking_description,
-    image_link = image_link)
-
+    new_venue = Venue()
+    form.populate_obj(new_venue)
     db.session.add(new_venue)
     db.session.commit()
-
   except Exception as e: 
     error = True
     print(e)
@@ -432,10 +358,10 @@ def edit_artist_submission(artist_id):
 
   if error:
       flash(
-        'An error occurred. Artist '+ name + ' could not be updated.'
+        'An error occurred. Artist '+ request.form['name']+ ' could not be updated.'
       )
   if not error:
-      flash('Artist '+ name+ ' was successfully updated!'
+      flash('Artist '+ request.form['name']+' was successfully updated!'
       )
   return redirect(url_for('show_artist', artist_id=artist_id))
   
@@ -541,29 +467,10 @@ def create_artist_submission():
   # TODO: insert form data as a new Venue record in the db, instead
   # TODO: modify data to be the data object returned from db insertion
   error = False
-  try: 
-    name = request.form['name']
-    city = request.form['city']
-    state = request.form['state']
-    phone = request.form['phone']
-    genres = request.form.getlist('genres'),
-    facebook_link = request.form['facebook_link']
-    image_link = request.form['image_link']
-    website = request.form['website']
-    seeking_venue = True if 'seeking_venue' in request.form else False
-    seeking_description = request.form['seeking_description']
-
-    new_artist = Artist(name=name, 
-    city = city, 
-    state = state, 
-    phone = phone, 
-    genres = genres, 
-    facebook_link = facebook_link, 
-    image_link = image_link, 
-    website = website, 
-    seeking_venue = seeking_venue, 
-    seeking_description = seeking_description)
-
+  form = ArtistForm(request.form)
+  try:
+    new_artist = Artist()
+    form.populate_obj(new_artist)
     db.session.add(new_artist)
     db.session.commit()
   except Exception as e: 
@@ -574,16 +481,15 @@ def create_artist_submission():
   finally: 
     db.session.close()
   if error: 
-    flash('An error occurred. Artist ' + name+ ' could not be listed.')
+    flash('An error occurred. Artist ' + request.form['name']+' could not be listed.')
   if not error: 
-    flash('Artist ' + name + ' was successfully listed!')
+    flash('Artist '+ request.form['name']+ ' was successfully listed!')
   # on successful db insert, flash success
   
   # TODO: on unsuccessful db insert, flash an error instead.
   # e.g., flash('An error occurred. Artist ' + data.name + ' could not be listed.')
   return render_template('pages/home.html')
   
-
 
 #  Shows
 #  ----------------------------------------------------------------
